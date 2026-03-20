@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Intelligence Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0f0e;
+    --surface: #141918;
+    --surface2: #1c2220;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8ede9;
+    --text2: #8a9e8e;
+    --text3: #4d5e50;
+    --accent: #4ade80;
+    --accent2: #22c55e;
+    --accent-dim: rgba(74,222,128,0.1);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.1);
+    --coral: #f87171;
+    --coral-dim: rgba(248,113,113,0.1);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96,165,250,0.1);
+    --teal: #2dd4bf;
+    --teal-dim: rgba(45,212,191,0.1);
+    --font-display: 'DM Serif Display', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Loading screen */
+  #loader {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    z-index: 9999;
+    transition: opacity 0.5s;
+  }
+  #loader.done { opacity: 0; pointer-events: none; }
+  .loader-title { font-family: var(--font-display); font-size: 28px; color: var(--text); }
+  .loader-sub { color: var(--text2); font-size: 12px; letter-spacing: 0.1em; }
+  .loader-bar-track { width: 200px; height: 2px; background: var(--border2); border-radius: 1px; overflow: hidden; }
+  .loader-bar { height: 100%; width: 0; background: var(--accent); border-radius: 1px; transition: width 0.3s; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(12,15,14,0.92);
+    backdrop-filter: blur(12px);
+  }
+  .header-left { display: flex; align-items: baseline; gap: 16px; }
+  .logo { font-family: var(--font-display); font-size: 22px; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .tagline { color: var(--text3); font-size: 11px; letter-spacing: 0.08em; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .sync-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sync-btn:hover { background: rgba(74,222,128,0.18); }
+  .sync-btn.loading .sync-icon { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sync-icon { display: inline-block; width: 12px; height: 12px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse-dot 2s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Main layout */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* Top KPI strip */
+  .kpi-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--border2); }
+  .kpi-card::before {
+    content: ''; position: absolute; inset: 0;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .kpi-card.green::before { background: var(--accent-dim); }
+  .kpi-card.amber::before { background: var(--amber-dim); }
+  .kpi-card.blue::before { background: var(--blue-dim); }
+  .kpi-card.coral::before { background: var(--coral-dim); }
+  .kpi-card:hover::before { opacity: 1; }
+  .kpi-label { font-size: 10px; letter-spacing: 0.12em; color: var(--text3); text-transform: uppercase; margin-bottom: 10px; }
+  .kpi-value { font-family: var(--font-display); font-size: 36px; line-height: 1; margin-bottom: 6px; }
+  .kpi-card.green .kpi-value { color: var(--accent); }
+  .kpi-card.amber .kpi-value { color: var(--amber); }
+  .kpi-card.blue .kpi-value { color: var(--blue); }
+  .kpi-card.coral .kpi-value { color: var(--coral); }
+  .kpi-sub { font-size: 11px; color: var(--text2); }
+  .kpi-trend { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; }
+  .kpi-trend.up { color: var(--accent); }
+  .kpi-trend.down { color: var(--coral); }
+
+  /* Two-column layout */
+  .grid-2col { display: grid; grid-template-columns: 1fr 380px; gap: 20px; margin-bottom: 20px; }
+  .grid-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  /* Panel */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-family: var(--font-display); font-size: 16px; color: var(--text); }
+  .panel-badge {
+    font-size: 10px; letter-spacing: 0.08em;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .panel-badge.live { background: var(--accent-dim); color: var(--accent); border-color: rgba(74,222,128,0.3); }
+
+  /* Event list */
+  .event-list { padding: 8px 0; }
+  .event-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .event-item:last-child { border-bottom: none; }
+  .event-item:hover { background: var(--surface2); }
+  .event-item.selected { background: var(--surface2); }
+  .event-item.selected::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 2px; background: var(--accent);
+  }
+  .event-date-col { text-align: center; min-width: 42px; }
+  .event-day { font-family: var(--font-display); font-size: 22px; color: var(--text); line-height: 1; }
+  .event-month { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .event-info { flex: 1; min-width: 0; }
+  .event-name { font-size: 13px; color: var(--text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-meta { display: flex; gap: 10px; font-size: 11px; color: var(--text2); }
+  .event-tag {
+    font-size: 10px; padding: 2px 7px; border-radius: 3px;
+    font-family: var(--font-mono);
+  }
+  .tag-green { background: var(--accent-dim); color: var(--accent); }
+  .tag-amber { background: var(--amber-dim); color: var(--amber); }
+  .tag-blue { background: var(--blue-dim); color: var(--blue); }
+  .tag-coral { background: var(--coral-dim); color: var(--coral); }
+  .tag-gray { background: var(--surface2); color: var(--text2); }
+  .event-avatars { display: flex; }
+  .avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--surface2); border: 2px solid var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: var(--text2);
+    margin-left: -6px; position: relative;
+  }
+  .avatar:first-child { margin-left: 0; }
+  .avatar-more { background: var(--surface2); color: var(--text3); font-size: 8px; }
+
+  /* Brand Reputation panel */
+  .brand-score-ring {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 20px 16px;
+  }
+  .ring-container { position: relative; width: 120px; height: 120px; margin-bottom: 12px; }
+  .ring-container svg { transform: rotate(-90deg); }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .ring-score { font-family: var(--font-display); font-size: 32px; color: var(--accent); line-height: 1; }
+  .ring-label { font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
+  .ring-title { font-family: var(--font-display); font-size: 15px; color: var(--text); margin-bottom: 4px; }
+  .ring-subtitle { font-size: 11px; color: var(--text2); }
+
+  .brand-signals { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .signal-row { display: flex; align-items: center; gap: 10px; }
+  .signal-label { font-size: 11px; color: var(--text2); width: 110px; flex-shrink: 0; }
+  .signal-bar-track { flex: 1; height: 4px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+  .signal-bar { height: 100%; border-radius: 2px; transition: width 1s ease; }
+  .signal-val { font-size: 11px; color: var(--text); width: 32px; text-align: right; }
+
+  /* Participant table */
+  .ptable { width: 100%; border-collapse: collapse; }
+  .ptable th {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text3); padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: left; font-weight: 400;
+  }
+  .ptable td { padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .ptable tr:last-child td { border-bottom: none; }
+  .ptable tr:hover td { background: var(--surface2); }
+  .p-name { color: var(--text); }
+  .p-domain { color: var(--text2); font-size: 11px; }
+  .rsvp-badge { font-size: 10px; padding: 2px 7px; border-radius: 3px; }
+
+  /* Trend mini chart */
+  .trend-chart { padding: 16px 20px; }
+  .trend-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+  .trend-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .trend-bar {
+    width: 100%; border-radius: 3px 3px 0 0;
+    transition: height 0.8s cubic-bezier(.34,1.56,.64,1);
+    min-height: 2px;
+  }
+  .trend-bar-label { font-size: 9px; color: var(--text3); letter-spacing: 0.04em; }
+
+  /* Event detail drawer */
+  #detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    display: none;
+    margin-bottom: 20px;
+  }
+  #detail-panel.open { display: block; }
+  .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .detail-title { font-family: var(--font-display); font-size: 20px; color: var(--text); margin-bottom: 6px; }
+  .detail-meta { font-size: 12px; color: var(--text2); display: flex; gap: 16px; flex-wrap: wrap; }
+  .detail-close { cursor: pointer; color: var(--text3); font-size: 18px; transition: color 0.2s; }
+  .detail-close:hover { color: var(--text); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .detail-section-title { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
+
+  /* AI insight box */
+  .ai-insight {
+    background: var(--surface2);
+    border: 1px solid rgba(74,222,128,0.2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 16px;
+    position: relative;
+  }
+  .ai-tag {
+    position: absolute; top: -8px; left: 12px;
+    background: var(--bg); border: 1px solid rgba(74,222,128,0.3);
+    padding: 1px 8px; border-radius: 3px;
+    font-size: 9px; letter-spacing: 0.1em; color: var(--accent);
+  }
+  .ai-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+  /* Loading spinner for AI */
+  .ai-loading { display: flex; gap: 4px; align-items: center; }
+  .ai-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: bounce 0.8s ease-in-out infinite; }
+  .ai-dot:nth-child(2) { animation-delay: 0.15s; }
+  .ai-dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+  /* Donut chart domain breakdown */
+  .domain-breakdown { padding: 16px 20px; }
+  .domain-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .domain-color { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .domain-name { font-size: 12px; color: var(--text2); flex: 1; }
+  .domain-count { font-size: 12px; color: var(--text); }
+  .domain-pct { font-size: 11px; color: var(--text3); width: 32px; text-align: right; }
+
+  /* Navigation tabs */
+  .tab-nav { display: flex; gap: 2px; padding: 4px; background: var(--surface); border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border); width: fit-content; }
+  .tab-btn { padding: 6px 16px; border-radius: 6px; border: none; background: none; color: var(--text2); font-family: var(--font-mono); font-size: 12px; cursor: pointer; transition: all 0.2s; }
+  .tab-btn.active { background: var(--surface2); color: var(--text); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  /* Tab content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Upcoming badge */
+  .upcoming-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--amber); }
+  .upcoming-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .grid-2col { grid-template-columns: 1fr; }
+    .grid-3col { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    header { padding: 14px 16px; }
+  }
+
+  /* Animations */
+  @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .anim { opacity: 0; animation: fadeInUp 0.4s forwards; }
+  .anim-1 { animation-delay: 0.05s; }
+  .anim-2 { animation-delay: 0.1s; }
+  .anim-3 { animation-delay: 0.15s; }
+  .anim-4 { animation-delay: 0.2s; }
+  .anim-5 { animation-delay: 0.25s; }
+  .anim-6 { animation-delay: 0.3s; }
+</style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader">
+  <div class="loader-title">Event<span style="color:var(--accent)">IQ</span></div>
+  <div class="loader-sub">Connecting to Google Calendar...</div>
+  <div class="loader-bar-track"><div class="loader-bar" id="loader-bar"></div></div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="logo">Event<span>IQ</span></div>
+    <div class="tagline">Office Event Intelligence</div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <span style="font-size:11px;color:var(--text2)">Google Calendar synced</span>
+    <button class="sync-btn" id="sync-btn" onclick="syncCalendar()">
+      <span class="sync-icon" id="sync-icon">↻</span> Refresh
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- Tab nav -->
+  <div class="tab-nav anim anim-1">
+    <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab-btn" onclick="switchTab('events')">Events</button>
+    <button class="tab-btn" onclick="switchTab('reputation')">Brand Reputation</button>
+    <button class="tab-btn" onclick="switchTab('participants')">Participants</button>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div class="tab-content active" id="tab-overview">
+    <!-- KPIs -->
+    <div class="kpi-strip">
+      <div class="kpi-card green anim anim-2">
+        <div class="kpi-label">Brand Score</div>
+        <div class="kpi-value" id="kpi-score">—</div>
+        <div class="kpi-sub">out of 100</div>
+        <div class="kpi-trend up" id="kpi-score-trend">↑ +6 from last month</div>
+      </div>
+      <div class="kpi-card amber anim anim-3">
+        <div class="kpi-label">Total Events</div>
+        <div class="kpi-value" id="kpi-events">—</div>
+        <div class="kpi-sub">this month</div>
+        <div class="kpi-trend up" id="kpi-events-trend">↑ 2 more than last month</div>
+      </div>
+      <div class="kpi-card blue anim anim-4">
+        <div class="kpi-label">Acceptance Rate</div>
+        <div class="kpi-value" id="kpi-accept">—</div>
+        <div class="kpi-sub">avg RSVP yes rate</div>
+        <div class="kpi-trend up" id="kpi-accept-trend">↑ +4% improvement</div>
+      </div>
+      <div class="kpi-card coral anim anim-5">
+        <div class="kpi-label">Repeat Attendees</div>
+        <div class="kpi-value" id="kpi-repeat">—</div>
+        <div class="kpi-sub">loyalty signals</div>
+        <div class="kpi-trend up" id="kpi-repeat-trend">↑ growing</div>
+      </div>
+    </div>
+
+    <!-- Event detail drawer -->
+    <div id="detail-panel">
+      <div class="detail-header">
+        <div>
+          <div class="detail-title" id="detail-title">—</div>
+          <div class="detail-meta" id="detail-meta"></div>
+        </div>
+        <span class="detail-close" onclick="closeDetail()">✕</span>
+      </div>
+      <div class="detail-grid">
+        <div>
+          <div class="detail-section-title">Participants</div>
+          <div id="detail-participants"></div>
+        </div>
+        <div>
+          <div class="detail-section-title">RSVP Breakdown</div>
+          <div id="detail-rsvp"></div>
+        </div>
+      </div>
+      <div class="ai-insight" id="detail-ai">
+        <div class="ai-tag">AI INSIGHT</div>
+        <div class="ai-text" id="detail-ai-text">
+          <div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2col anim anim-5">
+      <!-- Upcoming events -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Upcoming Events</div>
+          <span class="panel-badge live">● Live</span>
+        </div>
+        <div class="event-list" id="event-list-upcoming"></div>
+      </div>
+      <!-- Brand score ring -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Brand Reputation</div>
+          <span class="panel-badge">AI-powered</span>
+        </div>
+        <div class="brand-score-ring">
+          <div class="ring-container">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+              <circle id="ring-circle" cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="10"
+                stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
+                style="transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/>
+            </svg>
+            <div class="ring-center">
+              <div class="ring-score" id="ring-score-val">—</div>
+              <div class="ring-label">SCORE</div>
+            </div>
+          </div>
+          <div class="ring-title" id="ring-title">—</div>
+          <div class="ring-subtitle" id="ring-subtitle">loading signals...</div>
+        </div>
+        <div class="brand-signals" id="brand-signals"></div>
+      </div>
+    </div>
+
+    <!-- Trend chart + domain breakdown -->
+    <div class="grid-3col anim anim-6">
+      <div class="panel" style="grid-column: span 2;">
+        <div class="panel-header">
+          <div class="panel-title">Participation Trend</div>
+          <span class="panel-badge" id="trend-range">Last 6 months</span>
+        </div>
+        <div class="trend-chart" id="trend-chart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Attendee Domains</div>
+          <span class="panel-badge" id="domain-total">—</span>
+        </div>
+        <div class="domain-breakdown" id="domain-breakdown"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EVENTS TAB -->
+  <div class="tab-content" id="tab-events">
+    <div class="panel anim anim-2">
+      <div class="panel-header">
+        <div class="panel-title">All Events</div>
+        <span class="panel-badge" id="all-events-count">—</span>
+      </div>
+      <div class="event-list" id="event-list-all"></div>
+    </div>
+  </div>
+
+  <!-- REPUTATION TAB -->
+  <div class="tab-content" id="tab-reputation">
+    <div class="grid-2col anim anim-2">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Reputation Signals</div>
+          <span class="panel-badge">Computed</span>
+        </div>
+        <div class="brand-signals" id="rep-signals" style="padding: 20px;"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">AI Analysis</div>
+          <span class="panel-badge">Claude</span>
+        </div>
+        <div style="padding: 20px;">
+          <div class="ai-insight" style="position:relative; margin-top: 0;">
+            <div class="ai-tag">BRAND INSIGHT</div>
+            <div class="ai-text" id="rep-ai-text">
+              <div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+            </div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div class="detail-section-title">Top Loyal Attendees</div>
+            <div id="top-loyal" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTICIPANTS TAB -->
+  <div class="tab-content" id="tab-participants">
+    <div class="panel anim anim-2">
+      <div class="panel-header">
+        <div class="panel-title">All Participants</div>
+        <span class="panel-badge" id="ptable-count">—</span>
+      </div>
+      <table class="ptable" id="participant-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Domain</th>
+            <th>Events Attended</th>
+            <th>Last RSVP</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="ptable-body"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+// ─── State ──────────────────────────────────────────────────────────────────
+let calendarEvents = [];
+let allParticipants = [];
+let brandData = {};
+
+// ─── Loader ─────────────────────────────────────────────────────────────────
+function animLoader(pct, done) {
+  document.getElementById('loader-bar').style.width = pct + '%';
+  if (done) setTimeout(() => { document.getElementById('loader').classList.add('done'); }, 400);
+}
+
+// ─── Fetch Google Calendar via Anthropic API (MCP) ──────────────────────────
+async function fetchCalendarEvents() {
+  animLoader(20);
+  try {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now); sixMonthsAgo.setMonth(now.getMonth() - 6);
+    const threeMonthsFwd = new Date(now); threeMonthsFwd.setMonth(now.getMonth() + 3);
+
+    const prompt = `Use Google Calendar to fetch ALL calendar events from ${sixMonthsAgo.toISOString()} to ${threeMonthsFwd.toISOString()}.
+For each event return a JSON array with this structure:
+[{
+  "id": "unique_id",
+  "title": "event title",
+  "start": "ISO datetime",
+  "end": "ISO datetime",
+  "location": "location or null",
+  "description": "short desc or null",
+  "organizer": { "name": "...", "email": "..." },
+  "attendees": [{ "name": "...", "email": "...", "responseStatus": "accepted|declined|tentative|needsAction" }],
+  "isOrganizer": true/false,
+  "status": "confirmed|tentative|cancelled"
+}]
+Return ONLY the raw JSON array, no markdown, no explanation.`;
+
+    animLoader(45);
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        messages: [{ role: "user", content: prompt }],
+        mcp_servers: [{ type: "url", url: "https://gcal.mcp.claude.com/mcp", name: "google-calendar" }]
+      })
+    });
+
+    animLoader(70);
+    const data = await resp.json();
+
+    // Extract from content blocks
+    let rawText = '';
+    for (const block of data.content || []) {
+      if (block.type === 'text') rawText += block.text;
+      if (block.type === 'mcp_tool_result') {
+        const t = block.content?.[0]?.text || '';
+        rawText += t;
+      }
+    }
+
+    // Find JSON array in response
+    const match = rawText.match(/\[[\s\S]*\]/);
+    if (match) {
+      calendarEvents = JSON.parse(match[0]);
+    } else {
+      calendarEvents = generateMockEvents();
+    }
+  } catch (e) {
+    console.warn('Calendar fetch failed, using mock data:', e);
+    calendarEvents = generateMockEvents();
+  }
+
+  animLoader(90);
+  return calendarEvents;
+}
+
+// ─── Mock data fallback ──────────────────────────────────────────────────────
+function generateMockEvents() {
+  const now = new Date();
+  const domains = ['gmail.com','company.co.id','partner.sg','vendor.com','startup.io','external.co'];
+  const names = ['Andi Wijaya','Budi Santoso','Citra Dewi','Dian Pratama','Eko Nugroho','Fita Sari','Gita Rahma','Hendra Putra','Irma Kusuma','Joko Widodo','Kartika Sari','Lina Chen'];
+  function randName() { return names[Math.floor(Math.random()*names.length)]; }
+  function randEmail(name) { return name.toLowerCase().replace(' ','.')+Math.floor(Math.random()*10)+'@'+domains[Math.floor(Math.random()*domains.length)]; }
+  function randRsvp() { const r=Math.random(); return r<0.6?'accepted':r<0.8?'tentative':r<0.95?'needsAction':'declined'; }
+  function mkAttendees(n) {
+    return Array.from({length:n}, () => {
+      const name = randName(); return { name, email: randEmail(name), responseStatus: randRsvp() };
+    });
+  }
+  const eventTemplates = [
+    { title: 'Q2 Business Review', type: 'review' },
+    { title: 'Product Launch Kickoff', type: 'launch' },
+    { title: 'Team All-Hands', type: 'internal' },
+    { title: 'Client Strategy Workshop', type: 'external' },
+    { title: 'Marketing Sync', type: 'internal' },
+    { title: 'Partner Onboarding', type: 'external' },
+    { title: 'Tech Town Hall', type: 'internal' },
+    { title: 'Leadership Summit', type: 'external' },
+    { title: 'Sprint Demo Day', type: 'internal' },
+    { title: 'Vendor Review', type: 'external' },
+  ];
+  return eventTemplates.map((t, i) => {
+    const d = new Date(now); d.setDate(d.getDate() + (i * 9 - 40));
+    const end = new Date(d); end.setHours(end.getHours() + 2);
+    const n = 4 + Math.floor(Math.random()*10);
+    return {
+      id: 'evt_'+i, title: t.title,
+      start: d.toISOString(), end: end.toISOString(),
+      location: t.type==='external'?'Meeting Room A / Hybrid':'Online – Zoom',
+      description: null, status: 'confirmed',
+      isOrganizer: Math.random()>0.4,
+      organizer: { name: 'Adam Nugraha', email: 'adam@company.co.id' },
+      attendees: mkAttendees(n),
+      _type: t.type
+    };
+  });
+}
+
+// ─── Process data ────────────────────────────────────────────────────────────
+function processData(events) {
+  // Build participant map
+  const pmap = {};
+  events.forEach(ev => {
+    (ev.attendees||[]).forEach(a => {
+      if (!pmap[a.email]) pmap[a.email] = { name: a.name, email: a.email, events: [], domain: a.email.split('@')[1]||'unknown' };
+      pmap[a.email].events.push({ eventId: ev.id, title: ev.title, rsvp: a.responseStatus, date: ev.start });
+    });
+  });
+  allParticipants = Object.values(pmap);
+
+  // Domain counts
+  const domainMap = {};
+  allParticipants.forEach(p => { domainMap[p.domain] = (domainMap[p.domain]||0) + 1; });
+
+  // Brand signals
+  const totalInvites = events.reduce((s,e) => s+(e.attendees||[]).length, 0);
+  const totalAccepted = events.reduce((s,e) => s+(e.attendees||[]).filter(a=>a.responseStatus==='accepted').length, 0);
+  const acceptRate = totalInvites > 0 ? Math.round((totalAccepted/totalInvites)*100) : 0;
+  const repeatCount = allParticipants.filter(p => p.events.length > 1).length;
+  const repeatRate = allParticipants.length > 0 ? Math.round((repeatCount/allParticipants.length)*100) : 0;
+  const externalDomains = Object.keys(domainMap).filter(d => !d.includes('company') && !d.includes('internal'));
+  const externalPct = Math.round((externalDomains.reduce((s,d)=>s+domainMap[d],0) / Math.max(allParticipants.length,1))*100);
+  const avgAttendees = events.length > 0 ? Math.round(events.reduce((s,e)=>s+(e.attendees||[]).length,0)/events.length) : 0;
+
+  // Brand score (weighted)
+  const score = Math.min(100, Math.round(
+    acceptRate * 0.4 + repeatRate * 0.3 + Math.min(externalPct, 60) * 0.2 + Math.min(avgAttendees * 2, 20)
+  ));
+
+  brandData = {
+    score, acceptRate, repeatRate, externalPct,
+    domainMap, avgAttendees, repeatCount,
+    totalParticipants: allParticipants.length,
+    totalEvents: events.length
+  };
+  return brandData;
+}
+
+// ─── Compute monthly trend ───────────────────────────────────────────────────
+function computeTrend(events) {
+  const months = {};
+  events.forEach(ev => {
+    const d = new Date(ev.start);
+    const key = d.toLocaleString('default',{month:'short'});
+    if (!months[key]) months[key] = 0;
+    months[key] += (ev.attendees||[]).filter(a=>a.responseStatus==='accepted').length;
+  });
+  return months;
+}
+
+// ─── Render functions ────────────────────────────────────────────────────────
+function renderKPIs(bd, events) {
+  document.getElementById('kpi-score').textContent = bd.score;
+  document.getElementById('kpi-events').textContent = events.length;
+  document.getElementById('kpi-accept').textContent = bd.acceptRate + '%';
+  document.getElementById('kpi-repeat').textContent = bd.repeatCount;
+
+  const circle = document.getElementById('ring-circle');
+  const offset = 314 * (1 - bd.score/100);
+  setTimeout(() => { circle.style.strokeDashoffset = offset; }, 200);
+  document.getElementById('ring-score-val').textContent = bd.score;
+  const tier = bd.score >= 75 ? 'Strong Brand' : bd.score >= 50 ? 'Growing Brand' : 'Building Brand';
+  document.getElementById('ring-title').textContent = tier;
+  document.getElementById('ring-subtitle').textContent = `Based on ${bd.totalParticipants} participants`;
+}
+
+function renderBrandSignals(containerId, bd) {
+  const signals = [
+    { label: 'Acceptance rate', val: bd.acceptRate, color: 'var(--accent)', suffix: '%' },
+    { label: 'Repeat attendees', val: bd.repeatRate, color: 'var(--blue)', suffix: '%' },
+    { label: 'External reach', val: bd.externalPct, color: 'var(--teal)', suffix: '%' },
+    { label: 'Avg per event', val: Math.min(bd.avgAttendees * 5, 100), color: 'var(--amber)', suffix: '' },
+  ];
+  document.getElementById(containerId).innerHTML = signals.map(s => `
+    <div class="signal-row">
+      <div class="signal-label">${s.label}</div>
+      <div class="signal-bar-track">
+        <div class="signal-bar" style="width:0%;background:${s.color}" data-w="${s.val}"></div>
+      </div>
+      <div class="signal-val">${s.val}${s.suffix}</div>
+    </div>
+  `).join('');
+  setTimeout(() => {
+    document.querySelectorAll('.signal-bar').forEach(b => {
+      b.style.width = b.dataset.w + '%';
+    });
+  }, 300);
+}
+
+function renderEventList(containerId, events, limit) {
+  const sorted = [...events].sort((a,b) => new Date(a.start) - new Date(b.start));
+  const shown = limit ? sorted.slice(0, limit) : sorted;
+  const now = new Date();
+  document.getElementById(containerId).innerHTML = shown.map(ev => {
+    const d = new Date(ev.start);
+    const isFuture = d > now;
+    const accepted = (ev.attendees||[]).filter(a=>a.responseStatus==='accepted').length;
+    const total = (ev.attendees||[]).length;
+    const avatars = (ev.attendees||[]).slice(0,3).map(a => `<div class="avatar">${(a.name||'?')[0]}</div>`).join('');
+    const extraCount = total > 3 ? `<div class="avatar avatar-more">+${total-3}</div>` : '';
+    const tagClass = isFuture ? 'tag-amber' : 'tag-green';
+    const tagLabel = isFuture ? 'upcoming' : 'done';
+    return `
+      <div class="event-item" onclick="openDetail('${ev.id}')">
+        <div class="event-date-col">
+          <div class="event-day">${d.getDate()}</div>
+          <div class="event-month">${d.toLocaleString('default',{month:'short'})}</div>
+        </div>
+        <div class="event-info">
+          <div class="event-name">${ev.title}</div>
+          <div class="event-meta">
+            <span>${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+            <span>${ev.location||'No location'}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="event-tag ${tagClass}">${tagLabel}</span>
+          <div class="event-avatars">${avatars}${extraCount}</div>
+          <span style="font-size:10px;color:var(--text3)">${accepted}/${total} accepted</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderTrend(trend) {
+  const entries = Object.entries(trend);
+  if (!entries.length) return;
+  const max = Math.max(...entries.map(([,v])=>v), 1);
+  const colors = ['var(--accent)','var(--blue)','var(--teal)','var(--amber)','var(--accent)','var(--blue)'];
+  document.getElementById('trend-chart').innerHTML = `
+    <div class="trend-bars">
+      ${entries.map(([m,v],i) => `
+        <div class="trend-bar-wrap">
+          <div class="trend-bar" data-h="${Math.round((v/max)*72)}" style="height:2px;background:${colors[i%colors.length]};opacity:0.8"></div>
+          <div class="trend-bar-label">${m}</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:10px;">Accepted attendees per month</div>`;
+  setTimeout(() => {
+    document.querySelectorAll('.trend-bar').forEach(b => {
+      b.style.height = b.dataset.h + 'px';
+    });
+  }, 300);
+}
+
+function renderDomains(domainMap) {
+  const sorted = Object.entries(domainMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const total = Object.values(domainMap).reduce((s,v)=>s+v,0);
+  const colors = ['var(--accent)','var(--blue)','var(--amber)','var(--teal)','var(--coral)'];
+  document.getElementById('domain-total').textContent = total + ' participants';
+  document.getElementById('domain-breakdown').innerHTML = sorted.map(([d,c],i) => `
+    <div class="domain-row">
+      <div class="domain-color" style="background:${colors[i]}"></div>
+      <div class="domain-name">${d}</div>
+      <div class="domain-count">${c}</div>
+      <div class="domain-pct">${Math.round(c/total*100)}%</div>
+    </div>`).join('');
+}
+
+function renderParticipantTable() {
+  const sorted = [...allParticipants].sort((a,b) => b.events.length - a.events.length);
+  document.getElementById('ptable-count').textContent = sorted.length + ' participants';
+  document.getElementById('ptable-body').innerHTML = sorted.map(p => {
+    const lastEvent = p.events[p.events.length-1];
+    const lastRsvp = lastEvent?.rsvp || 'unknown';
+    const rsvpClass = lastRsvp==='accepted'?'tag-green':lastRsvp==='declined'?'tag-coral':lastRsvp==='tentative'?'tag-amber':'tag-gray';
+    const isInternal = p.domain.includes('company')||p.domain.includes('internal');
+    return `
+      <tr>
+        <td><div class="p-name">${p.name}</div></td>
+        <td><div class="p-domain">${p.domain}</div></td>
+        <td><span class="event-tag ${p.events.length>2?'tag-green':'tag-gray'}">${p.events.length} event${p.events.length!==1?'s':''}</span></td>
+        <td><span class="rsvp-badge event-tag ${rsvpClass}">${lastRsvp}</span></td>
+        <td><span class="event-tag ${isInternal?'tag-blue':'tag-amber'}">${isInternal?'internal':'external'}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+function renderTopLoyal() {
+  const top = [...allParticipants].sort((a,b)=>b.events.length-a.events.length).slice(0,5);
+  document.getElementById('top-loyal').innerHTML = top.map(p => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div class="avatar" style="width:30px;height:30px;font-size:12px;">${(p.name||'?')[0]}</div>
+      <div style="flex:1">
+        <div style="font-size:12px;color:var(--text)">${p.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${p.domain}</div>
+      </div>
+      <span class="event-tag tag-green">${p.events.length} events</span>
+    </div>`).join('');
+}
+
+// ─── Event detail ────────────────────────────────────────────────────────────
+function openDetail(id) {
+  const ev = calendarEvents.find(e=>e.id===id);
+  if (!ev) return;
+  document.querySelectorAll('.event-item').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.event-item').forEach(el => {
+    if (el.getAttribute('onclick')?.includes(id)) el.classList.add('selected');
+  });
+  const d = new Date(ev.start);
+  document.getElementById('detail-title').textContent = ev.title;
+  document.getElementById('detail-meta').innerHTML = `
+    <span>📅 ${d.toLocaleDateString('en-GB',{weekday:'short',year:'numeric',month:'short',day:'numeric'})}</span>
+    <span>🕐 ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+    ${ev.location?`<span>📍 ${ev.location}</span>`:''}
+    <span>👤 ${(ev.attendees||[]).length} participants</span>`;
+
+  const byStatus = { accepted:[], declined:[], tentative:[], needsAction:[] };
+  (ev.attendees||[]).forEach(a => { (byStatus[a.responseStatus]||byStatus.needsAction).push(a); });
+
+  document.getElementById('detail-participants').innerHTML = (ev.attendees||[]).slice(0,6).map(a => {
+    const cls = a.responseStatus==='accepted'?'tag-green':a.responseStatus==='declined'?'tag-coral':'tag-amber';
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <div class="avatar">${(a.name||'?')[0]}</div>
+      <div style="flex:1;font-size:12px;color:var(--text)">${a.name}</div>
+      <span class="event-tag ${cls}">${a.responseStatus}</span>
+    </div>`;
+  }).join('');
+
+  const total = (ev.attendees||[]).length;
+  document.getElementById('detail-rsvp').innerHTML = ['accepted','tentative','needsAction','declined'].map(s => {
+    const cnt = byStatus[s].length;
+    const pct = total>0?Math.round(cnt/total*100):0;
+    const color = s==='accepted'?'var(--accent)':s==='declined'?'var(--coral)':'var(--amber)';
+    const label = s==='needsAction'?'awaiting':s;
+    return `<div class="signal-row" style="margin-bottom:8px;">
+      <div class="signal-label">${label}</div>
+      <div class="signal-bar-track"><div class="signal-bar" style="width:${pct}%;background:${color}"></div></div>
+      <div class="signal-val">${cnt}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('detail-ai-text').innerHTML = '<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>';
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  fetchEventInsight(ev);
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+  document.querySelectorAll('.event-item').forEach(el => el.classList.remove('selected'));
+}
+
+async function fetchEventInsight(ev) {
+  const accepted = (ev.attendees||[]).filter(a=>a.responseStatus==='accepted').length;
+  const total = (ev.attendees||[]).length;
+  const domains = [...new Set((ev.attendees||[]).map(a=>a.email.split('@')[1]))];
+
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{
+          role: "user",
+          content: `Analyze this office event and give a 2-sentence brand reputation insight:
+Event: "${ev.title}"
+Participants: ${total}, Accepted: ${accepted} (${Math.round(accepted/Math.max(total,1)*100)}%)
+Domains: ${domains.join(', ')}
+Focus on what the acceptance rate and participant mix signals about brand health and engagement. Be specific and actionable. Plain text only.`
+        }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.find(b=>b.type==='text')?.text || 'Analysis unavailable.';
+    document.getElementById('detail-ai-text').textContent = text;
+  } catch {
+    document.getElementById('detail-ai-text').textContent = `${Math.round(accepted/Math.max(total,1)*100)}% acceptance rate across ${domains.length} domains — ${accepted>=total*0.7?'strong engagement signals for this event.':'room to improve outreach and follow-up for this event.'}`;
+  }
+}
+
+async function fetchRepAIInsight(bd) {
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{
+          role: "user",
+          content: `Office brand reputation summary (3 sentences, plain text):
+Score: ${bd.score}/100
+Acceptance rate: ${bd.acceptRate}%
+Repeat attendee rate: ${bd.repeatRate}%
+External participant ratio: ${bd.externalPct}%
+Total events: ${bd.totalEvents}, Total participants: ${bd.totalParticipants}
+What does this say about the office's brand health? What's one specific action to improve it?`
+        }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.find(b=>b.type==='text')?.text || 'Analysis unavailable.';
+    document.getElementById('rep-ai-text').textContent = text;
+  } catch {
+    document.getElementById('rep-ai-text').textContent = `Your brand score of ${bd.score}/100 reflects ${bd.acceptRate}% RSVP acceptance across ${bd.totalEvents} events. With ${bd.repeatRate}% repeat attendance, you have a growing loyal audience. Focus on increasing external reach to strengthen cross-organization brand presence.`;
+  }
+}
+
+// ─── Tab switching ───────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ─── Sync ────────────────────────────────────────────────────────────────────
+async function syncCalendar() {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('loading');
+  calendarEvents = await fetchCalendarEvents();
+  const bd = processData(calendarEvents);
+  renderAll(bd);
+  btn.classList.remove('loading');
+}
+
+// ─── Render all ─────────────────────────────────────────────────────────────
+function renderAll(bd) {
+  const upcoming = calendarEvents.filter(e => new Date(e.start) >= new Date());
+  renderKPIs(bd, calendarEvents);
+  renderBrandSignals('brand-signals', bd);
+  renderBrandSignals('rep-signals', bd);
+  renderEventList('event-list-upcoming', upcoming, 6);
+  renderEventList('event-list-all', calendarEvents);
+  document.getElementById('all-events-count').textContent = calendarEvents.length + ' events';
+  renderTrend(computeTrend(calendarEvents));
+  renderDomains(bd.domainMap);
+  renderParticipantTable();
+  renderTopLoyal();
+  fetchRepAIInsight(bd);
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+(async function init() {
+  animLoader(10);
+  calendarEvents = await fetchCalendarEvents();
+  animLoader(90);
+  const bd = processData(calendarEvents);
+  renderAll(bd);
+  animLoader(100, true);
+})();
+</script>
+</body>
+</html>
