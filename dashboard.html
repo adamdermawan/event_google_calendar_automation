@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Marketing Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Exo+2:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#060810;--bg2:#080b14;--bg3:#0c1020;
+  --surf:#0e1422;--surf2:#121828;--surf3:#192035;
+  --bdr:rgba(0,210,255,0.07);--bdr2:rgba(0,210,255,0.14);
+  --txt:#ccd6f6;--txt2:#7a8ab8;--txt3:#384060;
+  --acc:#00d2ff;--acc2:#00a8cc;--acc-glow:rgba(0,210,255,0.12);
+  --acc-deep:rgba(0,210,255,0.06);
+  --blu:#3a7fff;--grn:#00e5a0;--red:#ff4d6d;--yel:#ffd166;--pur:#bd93f9;--org:#ff9f43;
+  --r:10px;--rs:7px;--rf:5px;
+  --font:'Space Grotesk',sans-serif;--fhead:'Exo 2',sans-serif;--fmono:'JetBrains Mono',monospace;
+  --sidebar-w:228px;--topbar-h:54px;
+  --grid-line:rgba(0,210,255,0.025);
+  --logo-grad:linear-gradient(135deg,#00d2ff,#0062ff);--logo-glow:rgba(0,210,255,0.35);
+  --signal-line:rgba(0,210,255,0.4);
+}
+body.light{
+  --bg:#fdf8f0;--bg2:#faf4e8;--bg3:#f5ede0;
+  --surf:#fff8ee;--surf2:#fef3e2;--surf3:#fdecd5;
+  --bdr:rgba(180,130,80,0.12);--bdr2:rgba(160,90,180,0.18);
+  --txt:#2d1a3a;--txt2:#6b4a7a;--txt3:#b09abe;
+  --acc:#c9659a;--acc2:#b04f84;--acc-glow:rgba(201,101,154,0.14);
+  --blu:#7b5ea7;--grn:#3a9e73;--red:#e05470;--yel:#c49b2e;--pur:#8b5cf6;--org:#d4761a;
+  --grid-line:rgba(180,130,200,0.08);
+  --logo-grad:linear-gradient(135deg,#c9659a,#8b5cf6);--logo-glow:rgba(201,101,154,0.35);
+  --signal-line:rgba(201,101,154,0.5);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font);background:var(--bg);color:var(--txt);font-size:13px;line-height:1.5;min-height:100vh;background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:40px 40px;transition:background-color .3s,color .3s;}
+body::before{content:'';position:fixed;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse at center,rgba(0,210,255,0.06) 0%,transparent 70%);pointer-events:none;z-index:0;}
+body::after{content:'';position:fixed;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse at center,rgba(58,127,255,0.05) 0%,transparent 70%);pointer-events:none;z-index:0;}
+
+/* LOADING */
+#loading-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.load-spinner{width:38px;height:38px;border:2px solid rgba(0,210,255,0.15);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;box-shadow:0 0 20px rgba(0,210,255,0.2);}
+.load-txt{color:var(--txt2);font-size:12px;font-family:var(--fmono);letter-spacing:.08em;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+#app{display:none;height:100vh;width:100vw;position:relative;z-index:1;}
+#app.visible{display:flex;}
+.shell{display:flex;height:100vh;width:100%;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:linear-gradient(180deg,#080c18 0%,#060810 100%);border-right:1px solid var(--bdr);display:flex;flex-direction:column;height:100vh;z-index:100;overflow-y:auto;overflow-x:hidden;transition:width .28s cubic-bezier(.4,0,.2,1),min-width .28s cubic-bezier(.4,0,.2,1);position:relative;}
+body.light .sidebar{background:linear-gradient(180deg,#fdf6e8 0%,#faf0e0 100%);border-right:1px solid rgba(180,130,80,0.15);}
+.sidebar::after{content:'';position:absolute;top:0;right:0;width:1px;height:100%;background:linear-gradient(180deg,transparent 0%,var(--signal-line) 30%,var(--signal-line) 70%,transparent 100%);pointer-events:none;}
+.sidebar.collapsed{width:0;min-width:0;}
+.sidebar::-webkit-scrollbar{width:4px;}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(0,210,255,0.2);border-radius:4px;}
+
+.sidebar-logo{height:var(--topbar-h);display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--bdr);gap:10px;flex-shrink:0;background:rgba(0,210,255,0.03);}
+.sidebar-logo-icon{width:30px;height:30px;border-radius:8px;background:var(--logo-grad);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 0 12px var(--logo-glow);}
+.sidebar-logo-txt{font-family:var(--fhead);font-size:14px;font-weight:800;background:linear-gradient(90deg,#00d2ff,#7eb8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:.5px;white-space:nowrap;}
+body.light .sidebar-logo-txt{background:linear-gradient(90deg,#c9659a,#8b5cf6);-webkit-background-clip:text;background-clip:text;}
+.sidebar-logo-sub{font-size:8.5px;color:rgba(0,210,255,0.4);font-family:var(--fmono);font-weight:500;letter-spacing:.1em;text-transform:uppercase;margin-top:-2px;white-space:nowrap;}
+body.light .sidebar-logo-sub{color:rgba(201,101,154,0.5);}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 8px;display:flex;flex-direction:column;gap:1px;}
+.nav-section-lbl{font-family:var(--fmono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:rgba(0,210,255,0.3);padding:14px 10px 5px;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.nav-section-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(0,210,255,0.2),transparent);}
+body.light .nav-section-lbl{color:rgba(139,92,246,0.45);}
+
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rs);cursor:pointer;transition:all .18s;color:var(--txt3);font-size:12.5px;font-weight:500;user-select:none;border:1px solid transparent;}
+.nav-item:hover{background:rgba(0,210,255,0.06);color:var(--txt2);border-color:rgba(0,210,255,0.1);}
+.nav-item.active{background:rgba(0,210,255,0.1);color:var(--acc);border-color:rgba(0,210,255,0.25);box-shadow:0 0 12px rgba(0,210,255,0.08),inset 0 0 12px rgba(0,210,255,0.04);}
+body.light .nav-item:hover{background:rgba(201,101,154,0.07);color:#6b4a7a;border-color:rgba(201,101,154,0.15);}
+body.light .nav-item.active{background:rgba(201,101,154,0.12);color:#c9659a;border-color:rgba(201,101,154,0.3);}
+.nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;}
+.nav-label{flex:1;white-space:nowrap;}
+.nav-arrow{font-size:10px;transition:transform .2s;opacity:.5;font-family:var(--fmono);}
+.nav-item.expanded .nav-arrow{transform:rotate(90deg);}
+
+/* SUBMENU */
+.nav-submenu{overflow:hidden;max-height:0;transition:max-height .25s ease;display:flex;flex-direction:column;gap:1px;padding-left:14px;}
+.nav-submenu.open{max-height:500px;}
+.nav-sub-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--rf);cursor:pointer;color:var(--txt3);font-size:12px;font-weight:500;transition:all .15s;}
+.nav-sub-item::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--txt3);flex-shrink:0;transition:all .15s;}
+.nav-sub-item:hover{color:var(--txt2);}
+.nav-sub-item:hover::before{background:var(--txt2);}
+.nav-sub-item.active{color:var(--acc);}
+.nav-sub-item.active::before{background:var(--acc);box-shadow:0 0 6px var(--acc);}
+body.light .nav-sub-item.active{color:#c9659a;}
+body.light .nav-sub-item.active::before{background:#c9659a;}
+
+/* SUB-SUB */
+.nav-subsub{overflow:hidden;max-height:0;transition:max-height .2s ease;display:flex;flex-direction:column;padding-left:12px;}
+.nav-subsub.open{max-height:200px;}
+.nav-subsub-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:var(--rf);cursor:pointer;color:var(--txt3);font-size:11.5px;font-weight:400;transition:all .13s;font-family:var(--fmono);}
+.nav-subsub-item:hover{color:var(--acc);background:rgba(0,210,255,0.05);}
+.nav-subsub-item.active{color:var(--acc);}
+body.light .nav-subsub-item:hover{color:#c9659a;background:rgba(201,101,154,0.06);}
+body.light .nav-subsub-item.active{color:#c9659a;}
+
+.sidebar-footer{padding:10px 8px;border-top:1px solid var(--bdr);flex-shrink:0;background:rgba(0,210,255,0.02);}
+.sidebar-user{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:var(--rs);cursor:pointer;transition:.15s;}
+.sidebar-user:hover{background:rgba(0,210,255,0.06);}
+.sidebar-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--blu));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;flex-shrink:0;box-shadow:0 0 10px rgba(0,210,255,0.3);}
+.sidebar-uname{font-size:12px;font-weight:600;color:var(--txt2);white-space:nowrap;}
+.sidebar-urole{font-size:9px;color:rgba(0,210,255,0.4);font-family:var(--fmono);letter-spacing:.05em;white-space:nowrap;}
+body.light .sidebar-urole{color:rgba(201,101,154,0.5);}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;min-width:0;position:relative;z-index:1;}
+.topbar{height:var(--topbar-h);background:rgba(8,11,20,0.95);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 18px 0 14px;flex-shrink:0;backdrop-filter:blur(10px);position:relative;}
+body.light .topbar{background:rgba(253,248,240,0.96);border-bottom:1px solid rgba(180,130,80,0.15);}
+.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,210,255,0.3),transparent);}
+body.light .topbar::after{background:linear-gradient(90deg,transparent,rgba(201,101,154,0.35),transparent);}
+.topbar-l{display:flex;align-items:center;gap:10px;}
+.topbar-breadcrumb{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--txt3);font-family:var(--fmono);}
+.bc-active{color:var(--acc);font-weight:600;}
+.bc-sep{font-size:10px;opacity:.4;color:var(--acc);}
+.topbar-r{display:flex;align-items:center;gap:8px;}
+
+.btn-toggle{width:32px;height:32px;border:1px solid var(--bdr2);border-radius:var(--rs);background:rgba(0,210,255,0.06);color:var(--txt2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0;}
+.btn-toggle:hover{background:rgba(0,210,255,0.12);color:var(--acc);}
+.btn-toggle svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.btn{padding:6px 14px;border:none;border-radius:var(--rs);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:5px;letter-spacing:.02em;}
+.btn-pri{background:linear-gradient(135deg,#00d2ff,#0062ff);color:#000;box-shadow:0 0 16px rgba(0,210,255,0.25);}
+.btn-pri:hover{box-shadow:0 0 24px rgba(0,210,255,0.4);transform:translateY(-1px);}
+.btn-ghost{background:rgba(0,210,255,0.06);color:var(--txt2);border:1px solid var(--bdr2);}
+.btn-ghost:hover{color:var(--acc);background:rgba(0,210,255,0.1);border-color:rgba(0,210,255,0.3);}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:var(--rf);}
+body.light .btn-pri{background:linear-gradient(135deg,#c9659a,#8b5cf6);color:#fff;}
+body.light .btn-ghost{background:rgba(201,101,154,0.06);border-color:rgba(180,130,80,0.2);}
+body.light .btn-ghost:hover{color:#c9659a;background:rgba(201,101,154,0.12);border-color:rgba(201,101,154,0.35);}
+
+.theme-toggle{display:flex;align-items:center;gap:7px;padding:5px 10px;border:1px solid var(--bdr2);border-radius:20px;background:rgba(0,210,255,0.05);cursor:pointer;transition:all .22s;font-family:var(--fmono);font-size:10.5px;font-weight:600;color:var(--txt2);user-select:none;}
+.theme-toggle:hover{background:var(--acc-glow);color:var(--acc);border-color:rgba(0,210,255,0.3);}
+body.light .theme-toggle{background:rgba(201,101,154,0.07);border-color:rgba(180,130,80,0.2);color:#6b4a7a;}
+.theme-toggle-track{width:30px;height:16px;border-radius:8px;background:rgba(0,210,255,0.15);border:1px solid rgba(0,210,255,0.25);position:relative;transition:all .22s;flex-shrink:0;}
+body.light .theme-toggle-track{background:rgba(201,101,154,0.2);border-color:rgba(201,101,154,0.4);}
+.theme-toggle-thumb{position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--acc);transition:all .22s;box-shadow:0 0 6px rgba(0,210,255,0.5);}
+body.light .theme-toggle-thumb{background:#c9659a;left:16px;box-shadow:0 0 6px rgba(201,101,154,0.5);}
+
+.content{flex:1;overflow-y:auto;overflow-x:auto;}
+.content::-webkit-scrollbar{width:6px;height:6px;}
+.content::-webkit-scrollbar-thumb{background:rgba(0,210,255,0.15);border-radius:4px;}
+.content::-webkit-scrollbar-thumb:hover{background:rgba(0,210,255,0.3);}
+.view{display:none;padding:22px;animation:fadeIn .22s ease;min-width:min-content;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* PAGE */
+.page-title{font-family:var(--fhead);font-size:20px;font-weight:800;color:#fff;letter-spacing:.5px;margin-bottom:4px;text-shadow:0 0 30px rgba(0,210,255,0.2);}
+body.light .page-title{color:#2d1a3a;text-shadow:none;}
+.page-desc{font-size:12px;color:var(--txt3);margin-bottom:20px;font-family:var(--fmono);letter-spacing:.03em;}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px;min-width:600px;}
+.card{background:linear-gradient(135deg,rgba(14,20,34,0.9) 0%,rgba(9,13,24,0.95) 100%);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;}
+.card:hover{border-color:rgba(0,210,255,0.25);box-shadow:0 4px 24px rgba(0,210,255,0.06);}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c,var(--acc)),transparent);opacity:.8;}
+.card::after{content:'';position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle,var(--c,var(--acc)) 0%,transparent 70%);opacity:.05;border-radius:50%;transform:translate(20px,-20px);}
+.card-lbl{font-family:var(--fmono);font-size:9.5px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);margin-bottom:8px;}
+.card-val{font-family:var(--fhead);font-size:22px;font-weight:700;color:#fff;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.3px;}
+.card-sub{font-size:11px;color:var(--txt3);margin-top:4px;font-family:var(--fmono);}
+body.light .card{background:linear-gradient(135deg,rgba(255,252,245,0.95),rgba(253,246,232,0.98));border-color:rgba(180,130,80,0.14);}
+body.light .card-val{color:#2d1a3a;}
+
+/* CHARTS */
+.charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;min-width:700px;}
+.chart-card{background:linear-gradient(135deg,rgba(14,20,34,0.9),rgba(9,13,24,0.95));border:1px solid var(--bdr);border-radius:var(--r);padding:18px;transition:border-color .2s;}
+.chart-card:hover{border-color:rgba(0,210,255,0.15);}
+body.light .chart-card{background:linear-gradient(135deg,rgba(255,252,245,0.95),rgba(253,246,232,0.98));border-color:rgba(180,130,80,0.14);}
+.chart-ttl{font-family:var(--fhead);font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+body.light .chart-ttl{color:#8b6a9a;}
+.chart-wrap{position:relative;height:190px;}
+
+/* TABLE */
+.tbl-wrap{background:rgba(14,20,34,0.7);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;}
+body.light .tbl-wrap{background:rgba(255,252,245,0.9);border-color:rgba(180,130,80,0.14);}
+.tbl-scroll{overflow-x:auto;}
+.tbl-scroll::-webkit-scrollbar{height:5px;}
+.tbl-scroll::-webkit-scrollbar-thumb{background:rgba(0,210,255,0.15);border-radius:4px;}
+table{width:100%;border-collapse:collapse;}
+thead th{background:rgba(0,210,255,0.04);padding:9px 12px;text-align:left;font-family:var(--fmono);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:rgba(0,210,255,0.5);white-space:nowrap;border-bottom:1px solid var(--bdr);}
+body.light thead th{background:rgba(201,101,154,0.05);color:rgba(139,92,246,0.6);}
+tbody tr{border-bottom:1px solid rgba(0,210,255,0.04);transition:background .1s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(0,210,255,0.03);}
+body.light tbody tr:hover{background:rgba(201,101,154,0.04);}
+td{padding:9px 12px;font-size:12px;color:var(--txt2);white-space:nowrap;}
+body.light td{color:#6b4a7a;}
+td.txt-main{color:var(--txt);font-weight:500;}
+body.light td.txt-main{color:#2d1a3a;}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+input.search,select.flt{background:rgba(0,210,255,0.04);border:1px solid var(--bdr2);border-radius:var(--rs);color:var(--txt);font-family:var(--font);font-size:12px;padding:6px 10px;outline:none;transition:border-color .15s;}
+input.search{width:220px;}
+input.search:focus,select.flt:focus{border-color:rgba(0,210,255,0.5);box-shadow:0 0 0 2px rgba(0,210,255,0.06);}
+input.search::placeholder{color:var(--txt3);}
+select.flt option{background:#0c1020;}
+body.light input.search,body.light select.flt{background:rgba(255,252,245,0.9);border-color:rgba(180,130,80,0.2);color:#2d1a3a;}
+body.light input.search::placeholder{color:#b09abe;}
+body.light select.flt option{background:#fdf8f0;color:#2d1a3a;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600;font-family:var(--fmono);}
+.badge-won{background:rgba(0,229,160,0.12);color:var(--grn);}
+.badge-lost{background:rgba(255,77,109,0.12);color:var(--red);}
+.badge-contacted{background:rgba(0,210,255,0.12);color:var(--acc);}
+.badge-lead{background:rgba(189,147,249,0.12);color:var(--pur);}
+.badge-proposal{background:rgba(255,209,102,0.12);color:var(--yel);}
+.badge-hold{background:rgba(255,159,67,0.12);color:var(--org);}
+.badge-neg{background:rgba(58,127,255,0.12);color:var(--blu);}
+.badge-b2s{background:rgba(0,229,160,0.1);color:var(--grn);}
+.badge-wholesale{background:rgba(0,210,255,0.1);color:var(--acc);}
+.badge-oa{background:rgba(189,147,249,0.1);color:var(--pur);}
+
+/* LEADERBOARD */
+.leaderboard{display:flex;flex-direction:column;gap:6px;padding-top:2px;}
+.lb-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rs);background:rgba(255,255,255,0.02);border:1px solid transparent;transition:all .15s;}
+.lb-row:hover{background:rgba(0,210,255,0.05);border-color:rgba(0,210,255,0.1);}
+body.light .lb-row{background:rgba(255,252,245,0.7);}
+body.light .lb-row:hover{background:rgba(201,101,154,0.06);border-color:rgba(201,101,154,0.14);}
+.lb-rank{font-family:var(--fmono);font-size:11px;font-weight:700;color:var(--txt3);width:18px;text-align:center;flex-shrink:0;}
+.lb-rank.gold{color:#ffd166;text-shadow:0 0 8px rgba(255,209,102,0.5);}
+.lb-rank.silver{color:#94a3b8;}
+.lb-rank.bronze{color:#ff9f43;}
+.lb-bar-wrap{flex:1;min-width:0;}
+.lb-name{font-size:12px;font-weight:500;color:var(--txt);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+body.light .lb-name{color:#2d1a3a;}
+.lb-bar-bg{height:3px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;}
+.lb-bar{height:3px;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--blu));transition:width .7s ease;box-shadow:0 0 8px rgba(0,210,255,0.4);}
+body.light .lb-bar{background:linear-gradient(90deg,#c9659a,#8b5cf6);}
+.lb-val{font-size:11px;font-weight:600;color:var(--acc);flex-shrink:0;text-align:right;min-width:70px;font-family:var(--fmono);}
+body.light .lb-val{color:#c9659a;}
+
+/* FUNNEL */
+.funnel-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.funnel-label{font-size:11px;color:var(--txt2);width:100px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--fmono);}
+.funnel-bar-wrap{flex:1;height:20px;background:rgba(255,255,255,0.03);border-radius:var(--rf);overflow:hidden;}
+.funnel-bar{height:100%;border-radius:var(--rf);display:flex;align-items:center;justify-content:flex-end;padding-right:7px;transition:width .7s ease;min-width:24px;}
+.funnel-bar-val{font-size:10px;font-weight:700;color:#000;font-family:var(--fmono);}
+.funnel-total{font-size:10px;color:var(--txt3);width:30px;text-align:right;flex-shrink:0;font-family:var(--fmono);}
+
+/* DATE FILTER */
+.date-filter-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex-shrink:0;}
+.df-btn{padding:5px 12px;border:1px solid var(--bdr2);border-radius:20px;background:rgba(0,210,255,0.04);color:var(--txt3);font-family:var(--fmono);font-size:10.5px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.df-btn:hover{background:rgba(0,210,255,0.08);color:var(--txt2);}
+.df-btn.active{background:rgba(0,210,255,0.12);color:var(--acc);border-color:rgba(0,210,255,0.4);box-shadow:0 0 10px rgba(0,210,255,0.1);}
+body.light .df-btn{background:rgba(255,252,245,0.8);border-color:rgba(180,130,80,0.18);color:#8b6a9a;}
+body.light .df-btn.active{background:rgba(201,101,154,0.12);color:#c9659a;border-color:rgba(201,101,154,0.4);}
+
+.wl-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2);}
+.wl-dot-circle{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="load-spinner"></div>
+  <div class="load-txt" id="load-txt">Loading event marketing data...</div>
+</div>
+
+<div id="app">
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo-icon" style="background:#fff;box-shadow:none;padding:3px;border-radius:6px;overflow:hidden;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/LinkNet.png/320px-LinkNet.png"
+       alt="LinkNet"
+       style="width:52px;height:auto;object-fit:cover;object-position:right center;margin-right:-22px;">
+        </div>  
+      <div>
+        <div class="sidebar-logo-txt">EVENT MKT</div>
+        <!-- <div class="sidebar-logo-sub">LinkNet FiberCo</div> -->
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+
+      <div class="nav-section-lbl">Monitoring</div>
+
+      <div class="nav-item active" id="nav-monitoring" onclick="toggleMenu('monitoring-sub',this)">
+        <div class="nav-icon">◈</div>
+        <span class="nav-label">Monitoring</span>
+        <span class="nav-arrow">➤</span>
+      </div>
+      <div class="nav-submenu open" id="monitoring-sub">
+        <div class="nav-sub-item" id="nav-revenue-sub" onclick="navigateTo('overview','all')">Revenue</div>
+        <div class="nav-sub-item active" id="nav-leads-parent" onclick="toggleLeadsSub()">
+          Leads
+          <span class="nav-arrow" id="leads-sub-arrow" style="margin-left:auto">➤</span>
+        </div>
+        <div class="nav-subsub open" id="leads-subsub">
+          <div class="nav-subsub-item active" id="nav-b2s"       onclick="navigateTo('overview','B2S (Build to Suit)')">▸ B2S</div>
+          <div class="nav-subsub-item"        id="nav-oa"        onclick="navigateTo('overview','Open Access')">▸ Open Access</div>
+          <div class="nav-subsub-item"        id="nav-wholesale" onclick="navigateTo('overview','Wholesale')">▸ Wholesale</div>
+        </div>
+      </div>
+
+      <div class="nav-section-lbl" style="padding-top:4px;"></div>
+      <div class="nav-item" id="nav-events"   onclick="navigateTo('events','all')">
+        <div class="nav-icon">🎪</div><span class="nav-label">Event List</span>
+      </div>
+      <div class="nav-item" id="nav-isp"      onclick="navigateTo('isp','all')">
+        <div class="nav-icon">🏢</div><span class="nav-label">ISP Performance</span>
+      </div>
+      <div class="nav-item" id="nav-category" onclick="navigateTo('category','all')">
+        <div class="nav-icon">⬡</div><span class="nav-label">Event Category</span>
+      </div>
+
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">EM</div>
+        <div>
+          <div class="sidebar-uname">Event Marketing</div>
+          <div class="sidebar-urole">ADMIN • ONLINE</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-l">
+        <button class="btn-toggle" onclick="toggleSidebar()">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-breadcrumb">
+          <span id="bc-parent">Monitoring</span>
+          <span class="bc-sep" id="bc-sep">➤</span>
+          <span class="bc-active" id="bc-child">Overview</span>
+        </div>
+      </div>
+      <div class="topbar-r">
+        <button class="theme-toggle" onclick="toggleTheme()">
+          <span id="theme-icon">☀</span>
+          <div class="theme-toggle-track"><div class="theme-toggle-thumb"></div></div>
+          <span id="theme-label">Light</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="loadData()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- OVERVIEW VIEW -->
+      <div id="view-overview" class="view active">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+          <div>
+            <div class="page-title" id="ov-title">Overview — All Products</div>
+            <div class="page-desc" id="ov-desc" style="margin-bottom:0">Summary of event marketing performance and revenue pipeline.</div>
+          </div>
+          <div class="date-filter-bar" id="year-filter-bar">
+            <button class="df-btn active" data-range="all"    onclick="setRangeFilter('all')">All</button>
+            <button class="df-btn"        data-range="today"  onclick="setRangeFilter('today')">Today</button>
+            <button class="df-btn"        data-range="week"   onclick="setRangeFilter('week')">1 Week</button>
+            <button class="df-btn"        data-range="month"  onclick="setRangeFilter('month')">This Month</button>
+            <button class="df-btn"        data-range="custom" onclick="setRangeFilter('custom')">Custom</button>
+            <div id="custom-range-inputs" style="display:none;align-items:center;gap:6px;">
+              <input type="date" id="custom-from" class="search" style="width:130px;padding:4px 8px" onchange="applyCustomRange()">
+              <span style="color:var(--txt3);font-size:11px">→</span>
+              <input type="date" id="custom-to"   class="search" style="width:130px;padding:4px 8px" onchange="applyCustomRange()">
+            </div>
+            <select class="flt" id="ov-month-select" onchange="setMonthFilter(this.value)" style="border-radius:20px;padding:5px 12px;">
+              <option value="">All Months</option>
+              <option value="Jan">January</option><option value="Feb">February</option>
+              <option value="Mar">March</option><option value="Apr">April</option>
+              <option value="May">May</option><option value="Jun">June</option>
+              <option value="Jul">July</option><option value="Aug">August</option>
+              <option value="Sep">September</option><option value="Oct">October</option>
+              <option value="Nov">November</option><option value="Dec">December</option>
+            </select>
+          </div>
+        </div>
+        <div class="cards" id="kpi-cards"></div>
+        <div class="charts" style="grid-template-columns:1fr 1fr;">
+          <div class="chart-card">
+            <div class="chart-ttl" id="rev-chart-title">Revenue by Month</div>
+            <div class="chart-wrap"><canvas id="ch-rev-year"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-ttl">Progress Status</div>
+            <div class="chart-wrap" style="height:160px"><canvas id="ch-status"></canvas></div>
+            <div id="status-legend" style="display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap;"></div>
+          </div>
+        </div>
+        <div class="charts" style="grid-template-columns:1.1fr 1fr 1fr;">
+          <div class="chart-card">
+            <div class="chart-ttl">Pipeline by Status</div>
+            <div id="status-funnel"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-ttl">🏆 Top ISP — Revenue</div>
+            <div id="lb-isp" class="leaderboard"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-ttl">📊 Top Event Category</div>
+            <div id="lb-cat" class="leaderboard"></div>
+          </div>
+        </div>
+        <div class="charts" style="grid-template-columns:1fr;">
+          <div class="chart-card">
+            <div class="chart-ttl">Cost of Event vs Revenue per Brand</div>
+            <div class="chart-wrap" style="height:230px"><canvas id="ch-cost-vs-rev"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENT LIST VIEW -->
+      <div id="view-events" class="view">
+        <div class="page-title">Event List</div>
+        <div class="page-desc">Complete list of all marketing events.</div>
+        <div class="toolbar">
+          <input class="search" id="ev-search" placeholder="Search event, ISP, brand..." oninput="renderEventTable()">
+          <select class="flt" id="ev-year"     onchange="renderEventTable()"><option value="">All Years</option></select>
+          <select class="flt" id="ev-month"    onchange="renderEventTable()"><option value="">All Months</option></select>
+          <select class="flt" id="ev-category" onchange="renderEventTable()"><option value="">All Categories</option></select>
+          <select class="flt" id="ev-product"  onchange="renderEventTable()"><option value="">All Products</option></select>
+          <select class="flt" id="ev-status"   onchange="renderEventTable()"><option value="">All Statuses</option></select>
+          <span id="ev-count" style="color:var(--txt3);font-size:11px;margin-left:auto;"></span>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table>
+            <thead><tr>
+              <th>Year</th><th>Month</th><th>Event Category</th><th>Company (ISP)</th>
+              <th>Brand</th><th>Product Category</th><th>Progress Status</th>
+              <th>Cost of Event</th><th>Revenue from Leads</th><th>ROI</th>
+            </tr></thead>
+            <tbody id="ev-tbl-body"></tbody>
+          </table>
+        </div></div>
+      </div>
+
+      <!-- ISP VIEW -->
+      <div id="view-isp" class="view">
+        <div class="page-title">ISP Performance</div>
+        <div class="page-desc">Performance analysis per Company (ISP) — cost, revenue, and ROI.</div>
+        <div class="toolbar">
+          <select class="flt" id="isp-year"    onchange="renderISP()"><option value="">All Years</option></select>
+          <select class="flt" id="isp-month"   onchange="renderISP()">
+            <option value="">All Months</option>
+            <option value="Jan">January</option><option value="Feb">February</option>
+            <option value="Mar">March</option><option value="Apr">April</option>
+            <option value="May">May</option><option value="Jun">June</option>
+            <option value="Jul">July</option><option value="Aug">August</option>
+            <option value="Sep">September</option><option value="Oct">October</option>
+            <option value="Nov">November</option><option value="Dec">December</option>
+          </select>
+          <select class="flt" id="isp-product" onchange="renderISP()"><option value="">All Products</option></select>
+        </div>
+        <div class="charts" style="grid-template-columns:1fr 1fr;">
+          <div class="chart-card"><div class="chart-ttl">Revenue per Brand</div><div class="chart-wrap" style="height:240px"><canvas id="ch-isp-rev"></canvas></div></div>
+          <div class="chart-card"><div class="chart-ttl">Cost vs Revenue per Brand</div><div class="chart-wrap" style="height:240px"><canvas id="ch-isp-cost"></canvas></div></div>
+        </div>
+        <div class="charts" style="grid-template-columns:1fr;">
+          <div class="chart-card">
+            <div class="chart-ttl">Leaderboard — Total Revenue from Leads</div>
+            <div id="lb-isp-full" class="leaderboard" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CATEGORY VIEW -->
+      <div id="view-category" class="view">
+        <div class="page-title">Event Category Analysis</div>
+        <div class="page-desc">Performance breakdown by event marketing type.</div>
+        <div class="toolbar">
+          <select class="flt" id="cat-year"   onchange="renderCategory()"><option value="">All Years</option></select>
+          <select class="flt" id="cat-month"  onchange="renderCategory()">
+            <option value="">All Months</option>
+            <option value="Jan">January</option><option value="Feb">February</option>
+            <option value="Mar">March</option><option value="Apr">April</option>
+            <option value="May">May</option><option value="Jun">June</option>
+            <option value="Jul">July</option><option value="Aug">August</option>
+            <option value="Sep">September</option><option value="Oct">October</option>
+            <option value="Nov">November</option><option value="Dec">December</option>
+          </select>
+          <select class="flt" id="cat-status" onchange="renderCategory()"><option value="">All Statuses</option></select>
+        </div>
+        <div class="charts" style="grid-template-columns:1fr 1fr;">
+          <div class="chart-card"><div class="chart-ttl">Revenue per Event Category</div><div class="chart-wrap" style="height:240px"><canvas id="ch-cat-rev"></canvas></div></div>
+          <div class="chart-card"><div class="chart-ttl">Event Count by Category</div><div class="chart-wrap" style="height:240px"><canvas id="ch-cat-count"></canvas></div></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+</div><!-- /app -->
+
+<script>
+// =====================================================================
+// STATE  — all filter vars declared at TOP LEVEL (this was the bug)
+// =====================================================================
+let allData       = [];
+let productFilter = 'all';
+let currentView   = 'overview';
+let charts        = {};
+let sidebarOpen   = true;
+
+// ---- date / range filters (must be top-level, not inside getFiltered) ----
+let rangeFilter = 'all';
+let monthFilter = '';
+let customFrom  = null;
+let customTo    = null;
+
+const CHART_COLORS = ['#5b7cf6','#34d399','#fbbf24','#f87171','#a78bfa','#22d3ee','#fb923c','#ec4899','#10b981','#6366f1'];
+const STATUS_COLORS = {
+  'Closed Won':'#34d399','Closed Lost':'#f87171',
+  'Contacted':'#22d3ee','Lead Generated':'#a78bfa',
+  'Proposal Sent':'#fbbf24','On Hold':'#fb923c','Negotiation':'#5b7cf6'
+};
+const STATUS_BADGE = {
+  'Closed Won':'badge-won','Closed Lost':'badge-lost','Contacted':'badge-contacted',
+  'Lead Generated':'badge-lead','Proposal Sent':'badge-proposal','On Hold':'badge-hold','Negotiation':'badge-neg'
+};
+const PROD_BADGE = {'B2S (Build to Suit)':'badge-b2s','Wholesale':'badge-wholesale','Open Access':'badge-oa'};
+
+// =====================================================================
+// LOAD DATA
+// =====================================================================
+function loadData() {
+  document.getElementById('loading-screen').style.display = 'flex';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('load-txt').textContent = 'Loading event marketing data...';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        document.getElementById('load-txt').textContent = 'Error: ' + (res ? res.error : 'Failed to load');
+        return;
+      }
+      allData = res.data;
+      populateFilters();
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      navigateTo('overview', 'all');
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('load-txt').textContent = 'Error: ' + err.message;
+    })
+    .getEventData();
+}
+
+// =====================================================================
+// FILTER CONTROLS  — all top-level functions
+// =====================================================================
+function setRangeFilter(range) {
+  rangeFilter = range;
+  document.querySelectorAll('.df-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.range === range);
+  });
+  var customBox = document.getElementById('custom-range-inputs');
+  customBox.style.display = range === 'custom' ? 'flex' : 'none';
+  if (range !== 'custom') { customFrom = null; customTo = null; }
+  renderOverview();
+}
+
+function setMonthFilter(val) {
+  monthFilter = val;
+  renderOverview();
+}
+
+function applyCustomRange() {
+  var f = document.getElementById('custom-from').value;
+  var t = document.getElementById('custom-to').value;
+  customFrom = f ? new Date(f) : null;
+  customTo   = t ? new Date(t + 'T23:59:59') : null;
+  if (customFrom || customTo) renderOverview();
+}
+
+// =====================================================================
+// getFiltered — single definition, uses top-level filter vars
+// =====================================================================
+function getFiltered(extraFn) {
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var today  = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  var d = allData;
+
+  if (rangeFilter === 'today') {
+    d = d.filter(function(r) {
+      return String(r.year) === String(today.getFullYear()) &&
+             r.month === MONTHS[today.getMonth()];
+    });
+  } else if (rangeFilter === 'week') {
+    var weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    d = d.filter(function(r) {
+      var idx = MONTHS.indexOf(r.month);
+      if (idx < 0) return false;
+      var rowDate = new Date(Number(r.year), idx, 15);
+      return rowDate >= weekAgo && rowDate <= today;
+    });
+  } else if (rangeFilter === 'month') {
+    d = d.filter(function(r) {
+      return String(r.year) === String(today.getFullYear()) &&
+             r.month === MONTHS[today.getMonth()];
+    });
+  } else if (rangeFilter === 'custom' && (customFrom || customTo)) {
+    d = d.filter(function(r) {
+      var idx = MONTHS.indexOf(r.month);
+      if (idx < 0) return true;
+      var rowDate = new Date(Number(r.year), idx, 15);
+      if (customFrom && rowDate < customFrom) return false;
+      if (customTo   && rowDate > customTo)   return false;
+      return true;
+    });
+  }
+
+  if (monthFilter)              d = d.filter(function(r) { return r.month === monthFilter; });
+  if (productFilter !== 'all')  d = d.filter(function(r) { return r.product === productFilter; });
+  if (extraFn)                  d = d.filter(extraFn);
+  return d;
+}
+
+// =====================================================================
+// NAVIGATION
+// =====================================================================
+function navigateTo(view, product) {
+  currentView = view;
+  if (product !== undefined) productFilter = product;
+
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.getElementById('view-' + view).classList.add('active');
+
+  document.querySelectorAll('.nav-item,.nav-sub-item,.nav-subsub-item').forEach(function(el) {
+    el.classList.remove('active');
+  });
+
+  if (view === 'overview') {
+    document.getElementById('nav-monitoring').classList.add('active');
+    document.getElementById('monitoring-sub').classList.add('open');
+    document.getElementById('nav-leads-parent').classList.add('active');
+    document.getElementById('leads-subsub').classList.add('open');
+    document.getElementById('leads-sub-arrow').style.transform = 'rotate(90deg)';
+    var pMap = { 'B2S (Build to Suit)': 'nav-b2s', 'Open Access': 'nav-oa', 'Wholesale': 'nav-wholesale' };
+    var pEl  = pMap[productFilter];
+    if (pEl) document.getElementById(pEl).classList.add('active');
+
+    document.getElementById('ov-title').textContent =
+      productFilter === 'all' ? 'Overview — All Products' : 'Overview — ' + productFilter;
+    document.getElementById('ov-desc').textContent =
+      productFilter === 'all' ? 'Summary of overall event marketing performance.' : 'Product filter: ' + productFilter;
+
+    document.querySelectorAll('.df-btn').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.range === rangeFilter);
+    });
+    renderOverview();
+
+  } else if (view === 'events') {
+    document.getElementById('nav-events').classList.add('active');
+    renderEventTable();
+  } else if (view === 'isp') {
+    document.getElementById('nav-isp').classList.add('active');
+    renderISP();
+  } else if (view === 'category') {
+    document.getElementById('nav-category').classList.add('active');
+    renderCategory();
+  }
+
+  var bcMap = {
+    overview: { p: 'Monitoring', c: productFilter === 'all' ? 'Overview' : productFilter },
+    events:   { p: 'Event List', c: '' },
+    isp:      { p: 'Analysis',   c: 'ISP Performance' },
+    category: { p: 'Analysis',   c: 'Event Category' }
+  };
+  var bc = bcMap[view] || { p: view, c: '' };
+  document.getElementById('bc-parent').textContent = bc.p;
+  document.getElementById('bc-child').textContent  = bc.c;
+  document.getElementById('bc-sep').style.display  = bc.c ? '' : 'none';
+}
+
+function toggleLeadsSub() {
+  var sub   = document.getElementById('leads-subsub');
+  var arrow = document.getElementById('leads-sub-arrow');
+  var open  = sub.classList.toggle('open');
+  arrow.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+function toggleMenu(id, parentEl) {
+  var m    = document.getElementById(id);
+  var open = m.classList.toggle('open');
+  if (parentEl) parentEl.classList.toggle('expanded', open);
+}
+
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+}
+
+function toggleTheme() {
+  var isLight = document.body.classList.toggle('light');
+  document.getElementById('theme-icon').textContent  = isLight ? '🌙' : '☀';
+  document.getElementById('theme-label').textContent = isLight ? 'Dark' : 'Light';
+  try { localStorage.setItem('em-theme', isLight ? 'light' : 'dark'); } catch(e) {}
+  setTimeout(function() { if (currentView === 'overview') renderOverview(); }, 100);
+}
+
+function initTheme() {
+  try {
+    if (localStorage.getItem('em-theme') === 'light') {
+      document.body.classList.add('light');
+      document.getElementById('theme-icon').textContent  = '🌙';
+      document.getElementById('theme-label').textContent = 'Dark';
+    }
+  } catch(e) {}
+}
+
+// =====================================================================
+// DATA HELPERS
+// =====================================================================
+function fmtRp(n) {
+  if (!n && n !== 0) return 'Rp 0';
+  var a = Math.abs(n), prefix = n < 0 ? '-' : '';
+  if (a >= 1e12) return prefix + 'Rp ' + (a / 1e12).toFixed(2) + 'T';
+  if (a >= 1e9)  return prefix + 'Rp ' + (a / 1e9).toFixed(2)  + 'B';
+  if (a >= 1e6)  return prefix + 'Rp ' + (a / 1e6).toFixed(1)  + 'M';
+  if (a >= 1e3)  return prefix + 'Rp ' + (a / 1e3).toFixed(1)  + 'K';
+  return prefix + 'Rp ' + a.toLocaleString('en-US');
+}
+function fmtRpS(n) {
+  var a = Math.abs(n || 0);
+  if (a >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+  if (a >= 1e9)  return (n / 1e9).toFixed(1)  + 'B';
+  if (a >= 1e6)  return (n / 1e6).toFixed(1)  + 'M';
+  if (a >= 1e3)  return (n / 1e3).toFixed(0)  + 'K';
+  return n.toLocaleString('en-US');
+}
+function fmtNum(n) { return Number(n).toLocaleString('en-US'); }
+function roi(cost, rev) {
+  if (!cost) return '—';
+  var r = (rev - cost) / cost * 100;
+  return (r >= 0 ? '+' : '') + r.toFixed(0) + '%';
+}
+
+function populateFilters() {
+  var years  = [...new Set(allData.map(function(r) { return r.year; }))].sort(function(a,b){ return b - a; });
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var cats   = [...new Set(allData.map(function(r) { return r.category; }))].sort();
+  var prods  = [...new Set(allData.map(function(r) { return r.product;  }))].sort();
+  var stats  = [...new Set(allData.map(function(r) { return r.status;   }))].sort();
+
+  addOpts('ev-year', years);   addOpts('ev-month', months);
+  addOpts('ev-category', cats); addOpts('ev-product', prods); addOpts('ev-status', stats);
+  addOpts('isp-year', years);   addOpts('isp-product', prods);
+  addOpts('cat-year', years);   addOpts('cat-status', stats);
+}
+
+function addOpts(id, items) {
+  var el = document.getElementById(id); if (!el) return;
+  items.forEach(function(v) {
+    if (![...el.options].some(function(o) { return o.value === String(v); })) {
+      el.add(new Option(v, v));
+    }
+  });
+}
+
+// =====================================================================
+// OVERVIEW
+// =====================================================================
+function renderOverview() {
+  var d        = getFiltered();
+  var totalCost = d.reduce(function(a, r) { return a + r.cost;    }, 0);
+  var totalRev  = d.reduce(function(a, r) { return a + r.revenue; }, 0);
+  var won       = d.filter(function(r) { return r.status === 'Closed Won';  }).length;
+  var lost      = d.filter(function(r) { return r.status === 'Closed Lost'; }).length;
+  var winRate   = (won + lost) > 0 ? Math.round(won / (won + lost) * 100) : 0;
+  var avgROI    = totalCost > 0 ? ((totalRev - totalCost) / totalCost * 100).toFixed(0) : 0;
+
+  document.getElementById('kpi-cards').innerHTML = [
+    mkCard('Total Events',       fmtNum(d.length),                               won + ' Closed Won',           'var(--acc)'),
+    mkCard('Total Cost',         fmtRp(totalCost),                               'Event budget',                'var(--pur)'),
+    mkCard('Revenue from Leads', fmtRp(totalRev),                                'from ' + d.length + ' events','var(--grn)'),
+    mkCard('Win Rate',           winRate + '%',                                   won + ' won / ' + lost + ' lost','var(--yel)'),
+    mkCard('Overall ROI',        (avgROI >= 0 ? '+' : '') + avgROI + '%',        'Revenue vs Cost',             'var(--org)'),
+    mkCard('Avg Rev / Event',    fmtRp(Math.round(totalRev / (d.length || 1))),  'Average per event',           'var(--blu)'),
+  ].join('');
+
+  renderRevByMonth(d);
+  renderStatusDonut(d);
+  renderStatusFunnel(d);
+  buildLb('lb-isp', d, function(r) { return r.brand;    }, function(r) { return r.revenue; });
+  buildLb('lb-cat', d, function(r) { return r.category; }, function(r) { return r.revenue; });
+  renderCostVsRev(d);
+}
+
+function mkCard(lbl, val, sub, c) {
+  return '<div class="card" style="--c:' + c + '"><div class="card-lbl">' + lbl +
+    '</div><div class="card-val">' + val + '</div><div class="card-sub">' + sub + '</div></div>';
+}
+
+function renderRevByMonth(d) {
+  var MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var map = {};
+
+  d.forEach(function(r) {
+    if (!r.month) return;
+    // When no specific month/range filter: label as "YYYY - Mon" so every month is its own bar
+    var key = (rangeFilter === 'all' && !monthFilter)
+      ? r.year + ' - ' + r.month
+      : r.month;
+    map[key] = (map[key] || 0) + r.revenue;
+  });
+
+  // Sort: "YYYY - Mon" keys by year then month; plain month keys by calendar order
+  var keys = Object.keys(map).sort(function(a, b) {
+    var aYear = 0, bYear = 0, aM = a, bM = b;
+    if (a.indexOf(' - ') > -1) { aYear = parseInt(a); aM = a.split(' - ')[1]; }
+    if (b.indexOf(' - ') > -1) { bYear = parseInt(b); bM = b.split(' - ')[1]; }
+    if (aYear !== bYear) return aYear - bYear;
+    return MONTH_ORDER.indexOf(aM) - MONTH_ORDER.indexOf(bM);
+  });
+
+  // Update chart title to reflect context
+  var titleEl = document.getElementById('rev-chart-title');
+  if (titleEl) {
+    titleEl.textContent = (rangeFilter === 'all' && !monthFilter)
+      ? 'Revenue by Month (All Years)'
+      : 'Revenue by Month';
+  }
+
+  mkBar('ch-rev-year', keys, keys.map(function(k) { return map[k]; }));
+}
+
+function renderStatusDonut(d) {
+  var map = {};
+  d.forEach(function(r) { map[r.status] = (map[r.status] || 0) + 1; });
+  var keys   = Object.keys(map);
+  var vals   = keys.map(function(k) { return map[k]; });
+  var colors = keys.map(function(k) { return STATUS_COLORS[k] || '#888'; });
+  mkDonut('ch-status', keys, vals, colors, 'status-legend');
+}
+
+function renderStatusFunnel(d) {
+  var el = document.getElementById('status-funnel'); if (!el) return;
+  var STS    = ['Contacted','Lead Generated','Proposal Sent','Negotiation','Closed Won','Closed Lost'];
+  var counts = STS.map(function(s) { return d.filter(function(r) { return r.status === s; }).length; });
+  var max    = Math.max.apply(null, counts.concat([1]));
+  el.innerHTML = STS.map(function(s, i) {
+    var pct = Math.max(Math.round(counts[i] / max * 100), counts[i] ? 4 : 0);
+    return '<div class="funnel-row"><div class="funnel-label">' +
+      s.replace('Closed ','').replace('Generated','Gen.') +
+      '</div><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:' + pct + '%;background:' +
+      STATUS_COLORS[s] + 'cc">' + (counts[i] ? '<span class="funnel-bar-val">' + counts[i] + '</span>' : '') +
+      '</div></div><div class="funnel-total">' + counts[i] + '</div></div>';
+  }).join('');
+}
+
+function renderCostVsRev(d) {
+  var map = {};
+  d.forEach(function(r) {
+    if (!map[r.brand]) map[r.brand] = { cost: 0, rev: 0 };
+    map[r.brand].cost += r.cost;
+    map[r.brand].rev  += r.revenue;
+  });
+  var sorted = Object.entries(map)
+    .sort(function(a, b) { return (b[1].rev + b[1].cost) - (a[1].rev + a[1].cost); })
+    .slice(0, 12);
+  var labels = sorted.map(function(e) { return e[0]; });
+
+  destroyChart('ch-cost-vs-rev');
+  var ctx = document.getElementById('ch-cost-vs-rev'); if (!ctx) return;
+  charts['ch-cost-vs-rev'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Cost of Event',     data: sorted.map(function(e){return e[1].cost;}), backgroundColor:'rgba(255,159,67,0.65)', borderColor:'#fb923c', borderWidth:1, borderRadius:4 },
+        { label: 'Revenue from Leads',data: sorted.map(function(e){return e[1].rev;}),  backgroundColor:'rgba(52,211,153,0.65)', borderColor:'#34d399', borderWidth:1, borderRadius:4 }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, layout:{padding:{top:10}},
+      plugins:{ legend:{ labels:{ color:'#7a8ab8', font:{size:10} } } },
+      scales:{
+        x:{ ticks:{color:'#4a5070',font:{size:9},maxRotation:25}, grid:{color:'rgba(255,255,255,.04)'} },
+        y:{ ticks:{color:'#4a5070',font:{size:9},callback:function(v){return fmtRpS(v);}}, grid:{color:'rgba(255,255,255,.04)'}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// =====================================================================
+// EVENT LIST
+// =====================================================================
+function renderEventTable() {
+  var q  = (document.getElementById('ev-search')   || {}).value || '';
+  var fy = (document.getElementById('ev-year')     || {}).value || '';
+  var fm = (document.getElementById('ev-month')    || {}).value || '';
+  var fc = (document.getElementById('ev-category') || {}).value || '';
+  var fp = (document.getElementById('ev-product')  || {}).value || '';
+  var fs = (document.getElementById('ev-status')   || {}).value || '';
+
+  var filtered = allData.filter(function(r) {
+    if (fy && String(r.year) !== fy) return false;
+    if (fm && r.month    !== fm)     return false;
+    if (fc && r.category !== fc)     return false;
+    if (fp && r.product  !== fp)     return false;
+    if (fs && r.status   !== fs)     return false;
+    if (q  && ![r.category, r.isp, r.brand, r.product, r.status].join(' ').toLowerCase().includes(q.toLowerCase())) return false;
+    return true;
+  });
+
+  var cnt = document.getElementById('ev-count');
+  if (cnt) cnt.textContent = filtered.length + ' of ' + allData.length + ' events';
+
+  var tbody = document.getElementById('ev-tbl-body');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--txt3)">No matching data found</td></tr>';
+    return;
+  }
+
+  var totalCost = filtered.reduce(function(a,r){return a+r.cost;},0);
+  var totalRev  = filtered.reduce(function(a,r){return a+r.revenue;},0);
+
+  tbody.innerHTML = filtered.map(function(r) {
+    var revCell  = r.revenue > 0
+      ? '<td style="text-align:right;color:var(--grn);font-weight:600">' + fmtRp(r.revenue) + '</td>'
+      : '<td style="text-align:right;color:var(--txt3)">—</td>';
+    var roiV     = r.revenue > 0 ? roi(r.cost, r.revenue) : '—';
+    var roiColor = !r.revenue ? 'var(--txt3)' : r.revenue >= r.cost ? 'var(--grn)' : 'var(--red)';
+    return '<tr>' +
+      '<td style="color:var(--acc);font-family:var(--fmono);font-weight:600">' + r.year + '</td>' +
+      '<td style="font-family:var(--fmono)">' + r.month + '</td>' +
+      '<td class="txt-main">' + r.category + '</td>' +
+      '<td>' + r.isp + '</td>' +
+      '<td><span style="font-size:11px;background:rgba(0,210,255,0.06);color:var(--acc);padding:2px 6px;border-radius:4px;font-family:var(--fmono)">' + r.brand + '</span></td>' +
+      '<td><span class="badge ' + (PROD_BADGE[r.product]||'badge-contacted') + '">' + r.product + '</span></td>' +
+      '<td><span class="badge ' + (STATUS_BADGE[r.status]||'') + '">' + r.status + '</span></td>' +
+      '<td style="text-align:right;color:var(--pur);font-family:var(--fmono)">' + fmtRp(r.cost) + '</td>' +
+      revCell +
+      '<td style="text-align:right;color:' + roiColor + ';font-weight:600;font-family:var(--fmono)">' + roiV + '</td>' +
+      '</tr>';
+  }).join('') +
+  '<tr style="border-top:1px solid rgba(0,210,255,0.2);background:rgba(0,210,255,0.03)">' +
+    '<td colspan="7" style="font-weight:700;font-family:var(--fmono);font-size:11px;color:var(--acc)">TOTAL (' + filtered.length + ' events)</td>' +
+    '<td style="text-align:right;color:var(--pur);font-weight:700;font-family:var(--fmono)">'  + fmtRp(totalCost) + '</td>' +
+    '<td style="text-align:right;color:var(--grn);font-weight:700;font-family:var(--fmono)">'  + fmtRp(totalRev)  + '</td>' +
+    '<td style="text-align:right;color:' + (totalRev>=totalCost?'var(--grn)':'var(--red)') + ';font-weight:700;font-family:var(--fmono)">' + roi(totalCost,totalRev) + '</td>' +
+  '</tr>';
+}
+
+// =====================================================================
+// ISP VIEW
+// =====================================================================
+function renderISP() {
+  var fy = (document.getElementById('isp-year')    || {}).value || '';
+  var fm = (document.getElementById('isp-month')   || {}).value || '';
+  var fp = (document.getElementById('isp-product') || {}).value || '';
+  var d  = allData.filter(function(r) {
+    return (!fy || String(r.year) === fy) &&
+           (!fm || r.month === fm) &&
+           (!fp || r.product === fp);
+  });
+
+  var revMap = {}, costMap = {};
+  d.forEach(function(r) {
+    revMap[r.brand]  = (revMap[r.brand]  || 0) + r.revenue;
+    costMap[r.brand] = (costMap[r.brand] || 0) + r.cost;
+  });
+  var sorted = Object.keys(revMap).sort(function(a,b){return revMap[b]-revMap[a];}).slice(0,12);
+
+  mkBar('ch-isp-rev', sorted, sorted.map(function(k){return revMap[k];}));
+
+  destroyChart('ch-isp-cost');
+  var ctx = document.getElementById('ch-isp-cost'); if (!ctx) return;
+  charts['ch-isp-cost'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted,
+      datasets: [
+        { label:'Cost',    data:sorted.map(function(k){return costMap[k];}), backgroundColor:'rgba(255,159,67,0.65)', borderColor:'#fb923c', borderWidth:1, borderRadius:4 },
+        { label:'Revenue', data:sorted.map(function(k){return revMap[k];}),  backgroundColor:'rgba(52,211,153,0.65)', borderColor:'#34d399', borderWidth:1, borderRadius:4 }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, layout:{padding:{top:10}},
+      plugins:{ legend:{ labels:{ color:'#7a8ab8', font:{size:10} } } },
+      scales:{
+        x:{ ticks:{color:'#4a5070',font:{size:9},maxRotation:25}, grid:{color:'rgba(255,255,255,.04)'} },
+        y:{ ticks:{color:'#4a5070',font:{size:9},callback:function(v){return fmtRpS(v);}}, grid:{color:'rgba(255,255,255,.04)'}, beginAtZero:true }
+      }
+    }
+  });
+
+  var lbEl = document.getElementById('lb-isp-full');
+  var max  = revMap[sorted[0]] || 1;
+  var rCls = function(i) { return i===0?'gold':i===1?'silver':i===2?'bronze':''; };
+  lbEl.innerHTML = sorted.map(function(name, i) {
+    return '<div class="lb-row"><div class="lb-rank ' + rCls(i) + '">' + (i+1) + '</div>' +
+      '<div class="lb-bar-wrap"><div class="lb-name">' + name + '</div>' +
+      '<div class="lb-bar-bg"><div class="lb-bar" style="width:' + Math.round(revMap[name]/max*100) + '%"></div></div></div>' +
+      '<div class="lb-val">' + fmtRp(revMap[name]) + '</div></div>';
+  }).join('');
+}
+
+// =====================================================================
+// CATEGORY VIEW
+// =====================================================================
+function renderCategory() {
+  var fy = (document.getElementById('cat-year')   || {}).value || '';
+  var fm = (document.getElementById('cat-month')  || {}).value || '';
+  var fs = (document.getElementById('cat-status') || {}).value || '';
+  var d  = allData.filter(function(r) {
+    return (!fy || String(r.year) === fy) &&
+           (!fm || r.month === fm) &&
+           (!fs || r.status === fs);
+  });
+
+  var revMap = {}, cntMap = {};
+  d.forEach(function(r) {
+    revMap[r.category] = (revMap[r.category] || 0) + r.revenue;
+    cntMap[r.category] = (cntMap[r.category] || 0) + 1;
+  });
+  var sorted = Object.keys(revMap).sort(function(a,b){return revMap[b]-revMap[a];});
+  mkBar('ch-cat-rev',   sorted, sorted.map(function(k){return revMap[k];}));
+  mkBarCount('ch-cat-count', sorted, sorted.map(function(k){return cntMap[k];}));
+}
+
+// =====================================================================
+// CHART HELPERS
+// =====================================================================
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+var dlPlugin = {
+  id: 'dl',
+  afterDatasetsDraw: function(chart) {
+    var c = chart.ctx; c.save();
+    chart.data.datasets.forEach(function(_, di) {
+      chart.getDatasetMeta(di).data.forEach(function(el, i) {
+        var val = chart.data.datasets[di].data[i]; if (!val) return;
+        var pos   = el.tooltipPosition();
+        var label = (typeof val === 'number' && Math.abs(val) >= 1000) ? fmtRpS(val) : String(val);
+        c.font = '600 9px Inter,sans-serif'; c.fillStyle = '#a8b4d8';
+        c.textAlign = 'center'; c.textBaseline = 'bottom';
+        c.fillText(label, pos.x, pos.y - 4);
+      });
+    }); c.restore();
+  }
+};
+
+function mkBar(id, labels, data) {
+  destroyChart(id);
+  var ctx = document.getElementById(id); if (!ctx) return;
+  var colors = labels.map(function(_, i) { return CHART_COLORS[i % CHART_COLORS.length]; });
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors.map(function(c){return c+'bb';}), borderColor: colors, borderWidth: 1, borderRadius: 5 }] },
+    options: {
+      responsive:true, maintainAspectRatio:false, layout:{padding:{top:24}},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:function(c){return ' '+fmtRp(c.raw);}}} },
+      scales:{
+        x:{ ticks:{color:'#4a5070',font:{size:9},maxRotation:25}, grid:{color:'rgba(255,255,255,.04)'} },
+        y:{ ticks:{color:'#4a5070',font:{size:9},callback:function(v){return fmtRpS(v);}}, grid:{color:'rgba(255,255,255,.04)'}, beginAtZero:true }
+      }
+    },
+    plugins: [dlPlugin]
+  });
+}
+
+function mkBarCount(id, labels, data) {
+  destroyChart(id);
+  var ctx = document.getElementById(id); if (!ctx) return;
+  var colors = labels.map(function(_, i) { return CHART_COLORS[i % CHART_COLORS.length]; });
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors.map(function(c){return c+'bb';}), borderColor: colors, borderWidth: 1, borderRadius: 5 }] },
+    options: {
+      responsive:true, maintainAspectRatio:false, layout:{padding:{top:24}},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:function(c){return ' '+c.raw+' events';}}} },
+      scales:{
+        x:{ ticks:{color:'#4a5070',font:{size:9},maxRotation:25}, grid:{color:'rgba(255,255,255,.04)'} },
+        y:{ ticks:{color:'#4a5070',font:{size:9}}, grid:{color:'rgba(255,255,255,.04)'}, beginAtZero:true }
+      }
+    },
+    plugins: [{
+      id: 'dlcount',
+      afterDatasetsDraw: function(chart) {
+        var c = chart.ctx; c.save();
+        chart.data.datasets.forEach(function(_, di) {
+          chart.getDatasetMeta(di).data.forEach(function(el, i) {
+            var val = chart.data.datasets[di].data[i]; if (!val) return;
+            var pos = el.tooltipPosition();
+            c.font = '600 10px Inter,sans-serif'; c.fillStyle = '#a8b4d8';
+            c.textAlign = 'center'; c.textBaseline = 'bottom';
+            c.fillText(val, pos.x, pos.y - 4);
+          });
+        }); c.restore();
+      }
+    }]
+  });
+}
+
+function mkDonut(id, labels, vals, colors, legendId) {
+  destroyChart(id);
+  var ctx = document.getElementById(id); if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: labels, datasets: [{ data: vals, backgroundColor: colors.map(function(c){return c+'99';}), borderColor: colors, borderWidth: 2, hoverOffset: 6 }] },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+c.raw;}}} }
+    },
+    plugins: [{
+      id: 'dlDonut',
+      afterDatasetsDraw: function(chart) {
+        var c = chart.ctx; c.save();
+        chart.data.datasets.forEach(function(_, di) {
+          chart.getDatasetMeta(di).data.forEach(function(el, i) {
+            var val   = chart.data.datasets[di].data[i]; if (!val) return;
+            var total = chart.data.datasets[di].data.reduce(function(a,v){return a+(v||0);},0);
+            var p     = total ? Math.round(val / total * 100) : 0; if (p < 5) return;
+            var angle = (el.startAngle + el.endAngle) / 2;
+            var r     = (el.outerRadius + el.innerRadius) / 2 * 0.75;
+            c.font = 'bold 10px Inter,sans-serif'; c.fillStyle = 'rgba(255,255,255,0.9)';
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillText(p + '%', el.x + Math.cos(angle) * r, el.y + Math.sin(angle) * r);
+          });
+        }); c.restore();
+      }
+    }]
+  });
+  var leg = document.getElementById(legendId);
+  if (leg) leg.innerHTML = labels.map(function(l, i) {
+    return '<div class="wl-dot"><div class="wl-dot-circle" style="background:' + colors[i] + '"></div>' +
+      l + ': <strong style="color:' + colors[i] + '">' + vals[i] + '</strong></div>';
+  }).join('');
+}
+
+function buildLb(elId, d, keyFn, valFn) {
+  var el = document.getElementById(elId); if (!el) return;
+  var map = {};
+  d.forEach(function(r) { var k = keyFn(r); map[k] = (map[k] || 0) + valFn(r); });
+  var sorted = Object.entries(map).filter(function(e){return e[0];}).sort(function(a,b){return b[1]-a[1];}).slice(0,7);
+  var max    = sorted[0] ? sorted[0][1] : 1;
+  var rCls   = function(i) { return i===0?'gold':i===1?'silver':i===2?'bronze':''; };
+  el.innerHTML = sorted.map(function(entry, i) {
+    return '<div class="lb-row"><div class="lb-rank ' + rCls(i) + '">' + (i+1) + '</div>' +
+      '<div class="lb-bar-wrap"><div class="lb-name">' + entry[0] + '</div>' +
+      '<div class="lb-bar-bg"><div class="lb-bar" style="width:' + Math.round(entry[1]/max*100) + '%"></div></div></div>' +
+      '<div class="lb-val">' + fmtRp(entry[1]) + '</div></div>';
+  }).join('') || '<div style="color:var(--txt3);font-size:12px;padding:12px 0">No data available</div>';
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+window.onload = function() {
+  initTheme();
+  loadData();
+};
+</script>
+</body>
+</html>
